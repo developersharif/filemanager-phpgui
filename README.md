@@ -58,7 +58,7 @@ php -m | grep FFI
 ## Installation
 
 ```bash
-git clone <this-repo>           # or just copy the folder
+git clone https://github.com/developersharif/filemanager-phpgui           # or just copy the folder
 cd filemanager-phpgui
 composer install
 ```
