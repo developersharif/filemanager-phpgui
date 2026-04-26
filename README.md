@@ -27,6 +27,10 @@ It is meant as a real-world showcase of what you can build with the php-gui widg
 
 ---
 
+
+https://github.com/user-attachments/assets/35911a10-261c-4aa6-9053-e50ce87b1f2b
+
+
 ## Requirements
 
 | | Minimum |
