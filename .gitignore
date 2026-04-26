@@ -1,0 +1,12 @@
+/vendor/
+/composer.lock
+*.log
+.DS_Store
+/.vscode/
+/.idea/
+/tmp/
+/*.tmp
+/lib/
+
+.claude
+.code-review-graph
