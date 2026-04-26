@@ -1,0 +1,23 @@
+{
+    "name": "sharif/filemanager-phpgui",
+    "description": "Native desktop file manager built with php-gui",
+    "type": "project",
+    "require": {
+        "php": ">=8.1",
+        "developersharif/php-gui": "*"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "/home/sharif/Documents/Codes/php/php-gui",
+            "options": { "symlink": true }
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "FileManager\\": "src/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
