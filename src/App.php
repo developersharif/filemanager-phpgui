@@ -117,7 +117,7 @@ final class App
         $go->addCommand('Forward     Alt+Right', fn() => $this->goForward());
         $go->addCommand('Up          Alt+Up',    fn() => $this->goUp());
         $go->addCommand('Home',                  fn() => $this->navigate($this->homeDir()));
-        $go->addCommand('Root  /',               fn() => $this->navigate('/'));
+        $go->addCommand('Root',                   fn() => $this->navigate(PHP_OS_FAMILY === 'Windows' ? 'C:\\' : '/'));
 
         $help = $main->addSubmenu('Help');
         $help->addCommand('About', fn() => TopLevel::messageBox(
@@ -429,19 +429,31 @@ final class App
             'text' => '— Devices —', 'open' => true,
         ]);
 
-        $rid = $this->sidebar->insert($devicesRoot, [], [
-            'text' => Icons::placeIcon('root') . '  Filesystem',
-        ]);
-        $this->sidebarPaths[$rid] = '/';
-
-        foreach (['/mnt', '/media'] as $mountRoot) {
-            if (!is_dir($mountRoot)) continue;
-            foreach (FileSystem::listDir($mountRoot, false) as $row) {
-                if (!$row['isDir']) continue;
+        if (PHP_OS_FAMILY === 'Windows') {
+            foreach (range('A', 'Z') as $letter) {
+                $drive = $letter . ':\\';
+                if (!is_dir($drive)) continue;
                 $rid = $this->sidebar->insert($devicesRoot, [], [
-                    'text' => '💾  ' . $row['name'],
+                    'text' => '💾  ' . $drive,
                 ]);
-                $this->sidebarPaths[$rid] = $row['path'];
+                $this->sidebarPaths[$rid] = $drive;
+            }
+        } else {
+            $rid = $this->sidebar->insert($devicesRoot, [], [
+                'text' => Icons::placeIcon('root') . '  Filesystem',
+            ]);
+            $this->sidebarPaths[$rid] = '/';
+
+            $mountRoots = PHP_OS_FAMILY === 'Darwin' ? ['/Volumes'] : ['/mnt', '/media'];
+            foreach ($mountRoots as $mountRoot) {
+                if (!is_dir($mountRoot)) continue;
+                foreach (FileSystem::listDir($mountRoot, false) as $row) {
+                    if (!$row['isDir']) continue;
+                    $rid = $this->sidebar->insert($devicesRoot, [], [
+                        'text' => '💾  ' . $row['name'],
+                    ]);
+                    $this->sidebarPaths[$rid] = $row['path'];
+                }
             }
         }
     }
@@ -727,19 +739,40 @@ final class App
 
     private function openExternal(string $path): void
     {
-        // Best-effort: Linux (xdg-open), macOS (open), Windows (start).
-        $cmd = match (PHP_OS_FAMILY) {
-            'Darwin'  => 'open ',
-            'Windows' => 'start "" ',
-            default   => 'xdg-open ',
-        };
-        @exec($cmd . escapeshellarg($path) . ' >/dev/null 2>&1 &');
+        if (PHP_OS_FAMILY === 'Windows') {
+            // 'start' is a cmd.exe built-in, not a standalone executable.
+            $winPath = str_replace('/', '\\', $path);
+            @exec('cmd /c start "" ' . escapeshellarg($winPath));
+        } elseif (PHP_OS_FAMILY === 'Darwin') {
+            @exec('open ' . escapeshellarg($path) . ' >/dev/null 2>&1 &');
+        } else {
+            @exec('xdg-open ' . escapeshellarg($path) . ' >/dev/null 2>&1 &');
+        }
         $this->setStatus('Opening: ' . basename($path));
     }
 
     private function openInTerminal(string $path): void
     {
-        // Try a few common terminals.
+        if (PHP_OS_FAMILY === 'Windows') {
+            $winPath = str_replace('/', '\\', $path);
+            // Try Windows Terminal, then fall back to cmd.exe with /D to set start dir.
+            if ($this->which('wt') !== null) {
+                @exec('cmd /c wt -d ' . escapeshellarg($winPath));
+            } else {
+                @exec('cmd /c start /D ' . escapeshellarg($winPath) . ' cmd.exe');
+            }
+            $this->setStatus('Opened terminal in ' . $path);
+            return;
+        }
+
+        if (PHP_OS_FAMILY === 'Darwin') {
+            // Terminal.app accepts a directory argument via open.
+            @exec('open -a Terminal ' . escapeshellarg($path) . ' >/dev/null 2>&1 &');
+            $this->setStatus('Opened terminal in ' . $path);
+            return;
+        }
+
+        // Linux: try common terminals.
         $candidates = [
             'gnome-terminal --working-directory=' . escapeshellarg($path),
             'konsole --workdir ' . escapeshellarg($path),
@@ -759,7 +792,11 @@ final class App
 
     private function which(string $bin): ?string
     {
-        $out = @shell_exec('command -v ' . escapeshellarg($bin) . ' 2>/dev/null');
+        if (PHP_OS_FAMILY === 'Windows') {
+            $out = @shell_exec('where ' . escapeshellarg($bin) . ' 2>nul');
+        } else {
+            $out = @shell_exec('command -v ' . escapeshellarg($bin) . ' 2>/dev/null');
+        }
         $out = $out === null ? '' : trim($out);
         return $out !== '' ? $out : null;
     }
@@ -872,6 +909,11 @@ final class App
 
     private function homeDir(): string
     {
+        if (PHP_OS_FAMILY === 'Windows') {
+            $home = getenv('USERPROFILE') ?: ($_SERVER['USERPROFILE'] ?? '');
+            if ($home !== '') return $home;
+            return (getenv('HOMEDRIVE') ?: 'C:') . (getenv('HOMEPATH') ?: '\\');
+        }
         return $_SERVER['HOME'] ?? getenv('HOME') ?: '/';
     }
 
