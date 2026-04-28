@@ -67,31 +67,6 @@ cd filemanager-phpgui
 composer install
 ```
 
-The `composer.json` references php-gui from a local path:
-
-```json
-"repositories": [
-    {
-        "type": "path",
-        "url": "/home/sharif/Documents/Codes/php/php-gui",
-        "options": { "symlink": true }
-    }
-]
-```
-
-If you don't have php-gui checked out at that path, replace the block with the public package:
-
-```json
-"require": {
-    "php": ">=8.1",
-    "developersharif/php-gui": "^1.9"
-}
-```
-
-…and remove the `repositories` section. Then re-run `composer install`.
-
----
-
 ## Running
 
 ```bash
